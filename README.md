@@ -11,19 +11,19 @@ In contrast with “first-price auction”, “Dutch auction” is another type 
 
 # Feature Requirement
 Dutch Auction smart contracts should:
-  • Firstly, define and implement your new token using the ERC20 standard
-  • Implement Dutch auction logic in another contract(s)
-  • Only elapse for 20 minutes, either all tokens get sold out at clearing price no lower than the reserved price, or only part of total token supply get sold with the remaining tokens burned by the auction contract
-  • Be able to distribute the token minted to legitimate bidders at the end of the auction
-  • (bonus) add tests to demonstrate the auction contract is resistant to reentry attack.
+  1. Firstly, define and implement your new token using the ERC20 standard
+  2. Implement Dutch auction logic in another contract(s)
+  3. Only elapse for 20 minutes, either all tokens get sold out at clearing price no lower than the reserved price, or only part of total token supply get sold with the remaining tokens burned by the auction contract
+  4. Be able to distribute the token minted to legitimate bidders at the end of the auction
+  5. (bonus) add tests to demonstrate the auction contract is resistant to reentry attack.
     ▫ What is reentry attack,
     ▫ hands-on practice on reentry.
 
 # Tricky Points to Ponder
-  • How to enforce auction duration/countdown clock in blockchain?
-  • How to link/wrap your token contract with your auction contract?
-  • How to “burn” the unsold tokens?
-  • How to enforce successful bidder to pay Ether for the new token, (I.e., they can’t cancel the bid) and how to refund bids that are invalid?
+  1. How to enforce auction duration/countdown clock in blockchain?
+  2. How to link/wrap your token contract with your auction contract?
+  3. How to “burn” the unsold tokens?
+  4. How to enforce successful bidder to pay Ether for the new token, (I.e., they can’t cancel the bid) and how to refund bids that are invalid?
 
 ## Table of Contents
 

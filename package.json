@@ -1,5 +1,9 @@
 {
   "devDependencies": {
-    "hardhat": "^2.22.13"
+    "hardhat": "^2.22.13",
+    "react-app-rewired": "^2.2.1"
+  },
+  "dependencies": {
+    "redux-persist": "^6.0.0"
   }
 }

@@ -7,8 +7,7 @@ In contrast with “first-price auction”, “Dutch auction” is another type 
   1. Everyone who buys the asset will get it at the same price per unit
   2. The price per unit is determined by the market
   3. The price starts high and descends over time
-  4. 
-One of the most prominent blockchain projects, Algorand, uses Dutch Auction to distribute its network token (i.e., native cryptocurrency on their chain). Please watch their explainer video on how Dutch Auction works (auxiliary blog post).
+  4. One of the most prominent blockchain projects, Algorand, uses Dutch Auction to distribute its network token (i.e., native cryptocurrency on their chain). Please watch their explainer video on how Dutch Auction works (auxiliary blog post).
 
 # Feature Requirement
 Dutch Auction smart contracts should:

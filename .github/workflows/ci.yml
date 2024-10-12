@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  frontend-checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18.x"
+
+      - name: Install dependencies and lint frontend code
+        working-directory: frontend
+        continue-on-error: true
+        run: |
+          npm install
+          npm run lint
+
+      # - name: Run frontend tests
+      #   working-directory: frontend
+      #   run: |
+      #     npm run test
+
+  backend-checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18.x"
+
+      - name: Install dependencies and lint backend code
+        working-directory: backend
+        continue-on-error: true
+        run: |
+          npm install --force
+          npm run lint
+
+      - name: Run backend tests
+        working-directory: backend
+        run: |
+          npm run test

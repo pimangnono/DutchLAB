@@ -1,0 +1,43 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "submarineAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "dutchAuctionAdd",
+        "type": "address"
+      }
+    ],
+    "name": "revealExecution",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_owner",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_factory",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_byteCode",
+        "type": "bytes32"
+      }
+    ],
+    "name": "storeFactoryPlusBytes",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

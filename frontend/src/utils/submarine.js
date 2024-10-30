@@ -1,4 +1,4 @@
-import SubmarineFactoryABI from '../abis/SubmarineFactory.json';
+import SubmarineFactoryABI from '../abis/SubmarineSystem.json';
 import RevealABI from '../abis/Reveal.json';
 import { ethers, provider, signer, decodeTransctionLogs } from './contract';
 import { convertEthToWei } from './utils';

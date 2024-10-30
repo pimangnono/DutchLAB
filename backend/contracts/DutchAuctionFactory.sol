@@ -5,7 +5,7 @@ import "./DutchAuction.sol";
 // Define the DutchAuctionFactory contract
 contract DutchAuctionFactory {
     address[] public auctions; // Array to store addresses of deployed auctions
-    
+
     // Event to broadcast new auction deployments
     event AuctionCreated(address auctionAddress);
 

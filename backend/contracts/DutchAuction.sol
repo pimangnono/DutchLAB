@@ -16,15 +16,15 @@ contract DutchAuctionToken is ERC20 {
 // Define the DutchAuction contract
 contract DutchAuction is ReentrancyGuard {
     // Declare state variables for auction management
-    DutchAuctionToken public token; 
-    address payable public owner; 
-    uint256 public startPrice; 
-    uint256 public reservePrice; 
+    DutchAuctionToken public token;
+    address payable public owner;
+    uint256 public startPrice;
+    uint256 public reservePrice;
     uint256 public priceDecrementRate; // Price decrement rate per second
     uint256 public startTime; // Auction start time
     uint256 public auctionDuration; // Auction duration in seconds
     uint256 public tokensAvailable; // Total tokens available for auction
-    uint256 public tokensSold; 
+    uint256 public tokensSold;
     bool public auctionEnded; // Flag indicating if the auction has ended
     uint256 public withdrawTimeLock; // Time lock for withdrawal after auction ends
     uint256 public maxTokensPerBuyer; // Maximum tokens each buyer can purchase
@@ -52,27 +52,34 @@ contract DutchAuction is ReentrancyGuard {
         uint256 _minDecrementRate,
         uint256 _maxDecrementRate
     ) {
-        token = DutchAuctionToken(_tokenAddress); 
+        token = DutchAuctionToken(_tokenAddress);
         owner = payable(_owner); //for testing
         //owner = payable(msg.sender); // Set the auction owner as the deployer of the contract
-        startPrice = _startPrice; 
-        reservePrice = _reservePrice; 
-        priceDecrementRate = _priceDecrementRate; 
-        auctionDuration = _auctionDuration; 
-        tokensAvailable = _tokensAvailable; 
-        startTime = block.timestamp; 
-        withdrawTimeLock = _withdrawTimeLock; 
-        maxTokensPerBuyer = _maxTokensPerBuyer; 
+        startPrice = _startPrice;
+        reservePrice = _reservePrice;
+        priceDecrementRate = _priceDecrementRate;
+        auctionDuration = _auctionDuration;
+        tokensAvailable = _tokensAvailable;
+        startTime = block.timestamp;
+        withdrawTimeLock = _withdrawTimeLock;
+        maxTokensPerBuyer = _maxTokensPerBuyer;
         minDecrementRate = _minDecrementRate;
         maxDecrementRate = _maxDecrementRate;
     }
 
     // Function to dynamically update the price decrement rate
     function updatePriceDecrementRate(uint256 newPriceDecrementRate) public {
-        require(msg.sender == owner, "Only the owner can update the price decrement rate"); // Only the owner can update the rate
-        require(!auctionEnded, "Cannot update price decrement rate after auction has ended"); // Ensure the auction is still ongoing
         require(
-            newPriceDecrementRate >= minDecrementRate && newPriceDecrementRate <= maxDecrementRate,
+            msg.sender == owner,
+            "Only the owner can update the price decrement rate"
+        ); // Only the owner can update the rate
+        require(
+            !auctionEnded,
+            "Cannot update price decrement rate after auction has ended"
+        ); // Ensure the auction is still ongoing
+        require(
+            newPriceDecrementRate >= minDecrementRate &&
+                newPriceDecrementRate <= maxDecrementRate,
             "New price decrement rate must be within allowed range"
         ); // Ensure the new decrement rate is within allowed limits
 
@@ -94,11 +101,17 @@ contract DutchAuction is ReentrancyGuard {
     // Function to buy tokens during the auction
     function buyTokens(uint256 amount) public payable nonReentrant {
         require(!auctionEnded, "Auction has ended"); // Ensure the auction is ongoing
-        require(tokensSold + amount <= tokensAvailable, "Not enough tokens available"); // Ensure enough tokens are available
-        require(tokensPurchasedByBuyer[msg.sender] + amount <= maxTokensPerBuyer, "Purchase exceeds maximum allowed tokens per buyer"); // Ensure buyer does not exceed max limit
+        require(
+            tokensSold + amount <= tokensAvailable,
+            "Not enough tokens available"
+        ); // Ensure enough tokens are available
+        require(
+            tokensPurchasedByBuyer[msg.sender] + amount <= maxTokensPerBuyer,
+            "Purchase exceeds maximum allowed tokens per buyer"
+        ); // Ensure buyer does not exceed max limit
 
         uint256 currentPrice = getCurrentPrice(); // Get the current token price
-        uint256 cost = currentPrice * amount / 1 ether; // Calculate the total cost of tokens
+        uint256 cost = (currentPrice * amount) / 1 ether; // Calculate the total cost of tokens
         require(msg.value >= cost, "Not enough Ether sent"); // Ensure the buyer sends enough Ether
 
         // Effects
@@ -123,7 +136,11 @@ contract DutchAuction is ReentrancyGuard {
 
     // Function to manually or automatically end the auction
     function endAuction() public {
-        require(msg.sender == owner || block.timestamp >= startTime + auctionDuration, "Only the owner can end the auction or auction duration must be over"); // Allow owner or end automatically after duration
+        require(
+            msg.sender == owner ||
+                block.timestamp >= startTime + auctionDuration,
+            "Only the owner can end the auction or auction duration must be over"
+        ); // Allow owner or end automatically after duration
         require(!auctionEnded, "Auction already ended"); // Ensure the auction has not already ended
 
         auctionEnded = true; // Mark the auction as ended
@@ -134,7 +151,10 @@ contract DutchAuction is ReentrancyGuard {
     function withdraw() public {
         require(msg.sender == owner, "Only the owner can withdraw"); // Only the auction owner can withdraw the Ether
         require(auctionEnded, "Auction must be ended first"); // Ensure the auction has ended before withdrawal
-        require(block.timestamp >= startTime + auctionDuration + withdrawTimeLock, "Withdrawal is locked"); // Ensure the withdrawal time lock has passed
+        require(
+            block.timestamp >= startTime + auctionDuration + withdrawTimeLock,
+            "Withdrawal is locked"
+        ); // Ensure the withdrawal time lock has passed
         owner.transfer(address(this).balance); // Transfer the contract balance to the auction owner
     }
 }

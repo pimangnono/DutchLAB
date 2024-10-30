@@ -29,7 +29,7 @@ interface IERC20 {
     function burn(address account, uint256 amount) external;
 }
 
-interface ISubmarine {
+interface SubmarineInterface {
     function timestamp() external view returns (uint);
 
     function currentPrice() external view returns (uint);
@@ -261,8 +261,8 @@ contract DutchAuction {
         }
         submarineList.push(_submarine);
         for (uint i = submarineList.length - 1; i > 0; i--) {
-            ISubmarine submarine = ISubmarine(submarineList[i]);
-            ISubmarine prevSubmarine = ISubmarine(submarineList[i - 1]);
+            SubmarineInterface submarine = SubmarineInterface(submarineList[i]);
+            SubmarineInterface prevSubmarine = SubmarineInterface(submarineList[i - 1]);
             if (submarine.timestamp() < prevSubmarine.timestamp()) {
                 address temp = submarineList[i - 1];
                 submarineList[i - 1] = submarineList[i];
@@ -285,7 +285,7 @@ contract DutchAuction {
         bool exceededWorth = false;
         // find final price and refund to submarine owners
         for (uint i = 0; i < submarineList.length; i++) {
-            ISubmarine submarine = ISubmarine(submarineList[i]);
+            SubmarineInterface submarine = SubmarineInterface(submarineList[i]);
             address bidder = submarine.getOwner();
             if (seenBidders[bidder]) {
                 continue;
@@ -315,7 +315,7 @@ contract DutchAuction {
             if (tokenQtyLeft <= 0) {
                 break;
             }
-            ISubmarine submarine = ISubmarine(submarineList[i]);
+            SubmarineInterface submarine = SubmarineInterface(submarineList[i]);
             uint submarineBalance = submarine.getBalance();
             uint qty = (submarineBalance * 10 ** 18) / finalPrice;
             // Send token to bidder

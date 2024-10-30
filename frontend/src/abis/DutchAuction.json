@@ -3,32 +3,52 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "_seller",
+        "name": "_tokenAddress",
         "type": "address"
       },
       {
         "internalType": "uint256",
-        "name": "_startingPrice",
+        "name": "_startPrice",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "_discountRate",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "_token",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_tokenQty",
+        "name": "_reservePrice",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "_tokenId",
+        "name": "_priceDecrementRate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_auctionDuration",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_tokensAvailable",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_withdrawTimeLock",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_maxTokensPerBuyer",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_minDecrementRate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_maxDecrementRate",
         "type": "uint256"
       }
     ],
@@ -39,129 +59,56 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": true,
+        "indexed": false,
         "internalType": "address",
-        "name": "_seller",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "_token",
+        "name": "buyer",
         "type": "address"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "_qty",
+        "name": "amount",
         "type": "uint256"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "startPrice",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "discountRate",
+        "name": "price",
         "type": "uint256"
       }
     ],
-    "name": "AuctionCreated",
+    "name": "TokenPurchased",
     "type": "event"
   },
   {
     "anonymous": false,
     "inputs": [
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "_from",
-        "type": "address"
-      },
-      {
-        "indexed": true,
+        "indexed": false,
         "internalType": "uint256",
-        "name": "_qty",
+        "name": "tokensUnsold",
         "type": "uint256"
       }
     ],
-    "name": "DespositTokens",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [],
-    "name": "EndCommitStage",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [],
-    "name": "EndDistributingStage",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [],
-    "name": "EndRevealStage",
+    "name": "AuctionEnded",
     "type": "event"
   },
   {
     "anonymous": false,
     "inputs": [
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "_from",
-        "type": "address"
-      },
-      {
-        "indexed": true,
+        "indexed": false,
         "internalType": "uint256",
-        "name": "_price",
+        "name": "newPriceDecrementRate",
         "type": "uint256"
       }
     ],
-    "name": "LogBid",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [],
-    "name": "StartOfAuction",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "_bidder",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "_qtyAlloacated",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "refund",
-        "type": "uint256"
-      }
-    ],
-    "name": "SuccessfulBid",
+    "name": "PriceDecrementRateUpdated",
     "type": "event"
   },
   {
     "inputs": [],
-    "name": "AUCTION_DURATION",
+    "name": "auctionDuration",
     "outputs": [
       {
         "internalType": "uint256",
@@ -174,12 +121,12 @@
   },
   {
     "inputs": [],
-    "name": "REVEAL_DURATION",
+    "name": "auctionEnded",
     "outputs": [
       {
-        "internalType": "uint256",
+        "internalType": "bool",
         "name": "",
-        "type": "uint256"
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -188,98 +135,26 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "_submarine",
-        "type": "address"
-      }
-    ],
-    "name": "addSubmarineToList",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "uint256",
-        "name": "time_now",
+        "name": "amount",
         "type": "uint256"
       }
     ],
-    "name": "auctionStatusPred",
-    "outputs": [
-      {
-        "internalType": "enum DutchAuction.Status",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "discountRate",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "distributeToken",
+    "name": "buyTokens",
     "outputs": [],
     "stateMutability": "payable",
     "type": "function"
   },
   {
     "inputs": [],
-    "name": "endAt",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "endCommitStage",
+    "name": "endAuction",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
     "inputs": [],
-    "name": "endDistributingStage",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "endReavealStage",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "time_now",
-        "type": "uint256"
-      }
-    ],
-    "name": "getPrice",
+    "name": "getCurrentPrice",
     "outputs": [
       {
         "internalType": "uint256",
@@ -292,7 +167,7 @@
   },
   {
     "inputs": [],
-    "name": "getReservePrice",
+    "name": "maxDecrementRate",
     "outputs": [
       {
         "internalType": "uint256",
@@ -305,20 +180,7 @@
   },
   {
     "inputs": [],
-    "name": "getSubmarineList",
-    "outputs": [
-      {
-        "internalType": "address[]",
-        "name": "",
-        "type": "address[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "revealAt",
+    "name": "maxTokensPerBuyer",
     "outputs": [
       {
         "internalType": "uint256",
@@ -331,7 +193,20 @@
   },
   {
     "inputs": [],
-    "name": "seller",
+    "name": "minDecrementRate",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
     "outputs": [
       {
         "internalType": "address payable",
@@ -344,7 +219,7 @@
   },
   {
     "inputs": [],
-    "name": "startAt",
+    "name": "priceDecrementRate",
     "outputs": [
       {
         "internalType": "uint256",
@@ -357,14 +232,33 @@
   },
   {
     "inputs": [],
-    "name": "startAuction",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "name": "reservePrice",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [],
-    "name": "startingPrice",
+    "name": "startPrice",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "startTime",
     "outputs": [
       {
         "internalType": "uint256",
@@ -380,7 +274,7 @@
     "name": "token",
     "outputs": [
       {
-        "internalType": "contract IERC20",
+        "internalType": "contract DutchAuctionToken",
         "name": "",
         "type": "address"
       }
@@ -390,7 +284,26 @@
   },
   {
     "inputs": [],
-    "name": "tokenId",
+    "name": "tokensAvailable",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "tokensPurchasedByBuyer",
     "outputs": [
       {
         "internalType": "uint256",
@@ -403,7 +316,40 @@
   },
   {
     "inputs": [],
-    "name": "tokenQty",
+    "name": "tokensSold",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "newPriceDecrementRate",
+        "type": "uint256"
+      }
+    ],
+    "name": "updatePriceDecrementRate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "withdraw",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "withdrawTimeLock",
     "outputs": [
       {
         "internalType": "uint256",

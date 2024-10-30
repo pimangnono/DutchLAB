@@ -1,347 +1,140 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "hardhat/console.sol";
+// Import ERC20 standard contract from OpenZeppelin
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-interface IERC20 {
-    function totalSupply() external view returns (uint256);
-
-    function balanceOf(address account) external view returns (uint256);
-
-    function transfer(
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
-
-    function allowance(
-        address owner,
-        address spender
-    ) external view returns (uint256);
-
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
-
-    function burn(address account, uint256 amount) external;
+// Define the DutchAuctionToken contract inheriting from ERC20
+contract DutchAuctionToken is ERC20 {
+    // Constructor to initialize the token details
+    constructor(uint256 initialSupply) ERC20("DutchAuctionToken", "DAT") {
+        _mint(msg.sender, initialSupply); // Mint the initial supply of tokens to the contract deployer
+    }
 }
 
-interface ISubmarine {
-    function timestamp() external view returns (uint);
+// Define the DutchAuction contract
+contract DutchAuction is ReentrancyGuard {
+    // Declare state variables for auction management
+    DutchAuctionToken public token; 
+    address payable public owner; 
+    uint256 public startPrice; 
+    uint256 public reservePrice; 
+    uint256 public priceDecrementRate; // Price decrement rate per second
+    uint256 public startTime; // Auction start time
+    uint256 public auctionDuration; // Auction duration in seconds
+    uint256 public tokensAvailable; // Total tokens available for auction
+    uint256 public tokensSold; 
+    bool public auctionEnded; // Flag indicating if the auction has ended
+    uint256 public withdrawTimeLock; // Time lock for withdrawal after auction ends
+    uint256 public maxTokensPerBuyer; // Maximum tokens each buyer can purchase
+    uint256 public minDecrementRate; // Minimum allowed price decrement rate
+    uint256 public maxDecrementRate; // Maximum allowed price decrement rate
 
-    function currentPrice() external view returns (uint);
+    mapping(address => uint256) public tokensPurchasedByBuyer; // Track tokens purchased by each buyer
 
-    function getOwner() external view returns (address);
+    // Events to broadcast key actions during the auction
+    event TokenPurchased(address buyer, uint256 amount, uint256 price);
+    event AuctionEnded(uint256 tokensUnsold);
+    event PriceDecrementRateUpdated(uint256 newPriceDecrementRate);
 
-    function getBalance() external view returns (uint);
-
-    function sendToOwner(uint amount) external payable;
-
-    function sendToAccount(
-        address payable account,
-        uint amount
-    ) external payable;
-}
-
-function min(uint256 a, uint256 b) pure returns (uint256) {
-    return a <= b ? a : b;
-}
-
-contract DutchAuction {
-    uint public constant AUCTION_DURATION = 20 minutes;
-    uint public constant REVEAL_DURATION = 10 minutes;
-
-    IERC20 public immutable token;
-    uint public immutable tokenQty;
-    uint public immutable tokenId;
-
-    address payable public immutable seller;
-    uint public immutable startingPrice;
-    uint public immutable discountRate;
-    uint public startAt = 0;
-    uint public revealAt = 0;
-    uint public endAt = 0;
-    bool distributed = false;
-    enum Status {
-        NotStarted,
-        Active,
-        Revealing,
-        Distributing,
-        Ended
-    }
-
-    Status private status = Status.NotStarted;
-
-    uint private tokenNetWorthPool;
-    uint private currentBidNetWorthPool;
-    // mapping submarine address to timestamp
-    address[] private submarineList;
-    mapping(address => bool) private seenBidders;
-
-    event AuctionCreated(
-        address indexed _seller,
-        address indexed _token,
-        uint _qty,
-        uint startPrice,
-        uint discountRate
-    );
-    event StartOfAuction();
-    event DespositTokens(address indexed _from, uint indexed _qty);
-    event LogBid(address indexed _from, uint indexed _price);
-    event EndCommitStage();
-    event EndRevealStage();
-    event EndDistributingStage();
-    event SuccessfulBid(
-        address indexed _bidder,
-        uint _qtyAlloacated,
-        uint refund
-    );
-
-    modifier onlyNotSeller() {
-        require(msg.sender != seller, "The seller cannot perform this action");
-        _;
-    }
-
-    modifier onlySeller() {
-        require(
-            msg.sender == seller,
-            "Only the seller can perform this action"
-        );
-        _;
-    }
-
-    modifier onlyNotStarted() {
-        require(
-            status == Status.NotStarted,
-            "This auction has already started"
-        );
-        _;
-    }
-
-    modifier onlyActive() {
-        require(status == Status.Active, "This auction is no longer active");
-        _;
-    }
-
-    modifier onlyRevealing() {
-        require(
-            status == Status.Revealing,
-            "This auction is not in revealing stage"
-        );
-        _;
-    }
-
-    modifier onlyDistributing() {
-        require(
-            status == Status.Distributing,
-            "This auction is not in distributing stage"
-        );
-        _;
-    }
-
-    modifier onlyEnded() {
-        require(status == Status.Ended, "This auction is not ended");
-        _;
-    }
-
+    // Constructor to initialize auction parameters
     constructor(
-        address _seller,
-        uint _startingPrice,
-        uint _discountRate,
-        address _token,
-        uint _tokenQty,
-        uint _tokenId
+        address _owner,
+        address _tokenAddress,
+        uint256 _startPrice,
+        uint256 _reservePrice,
+        uint256 _priceDecrementRate,
+        uint256 _auctionDuration,
+        uint256 _tokensAvailable,
+        uint256 _withdrawTimeLock,
+        uint256 _maxTokensPerBuyer,
+        uint256 _minDecrementRate,
+        uint256 _maxDecrementRate
     ) {
-        seller = payable(_seller);
-        startingPrice = _startingPrice;
-        discountRate = _discountRate;
+        token = DutchAuctionToken(_tokenAddress); 
+        owner = payable(_owner); //for testing
+        //owner = payable(msg.sender); // Set the auction owner as the deployer of the contract
+        startPrice = _startPrice; 
+        reservePrice = _reservePrice; 
+        priceDecrementRate = _priceDecrementRate; 
+        auctionDuration = _auctionDuration; 
+        tokensAvailable = _tokensAvailable; 
+        startTime = block.timestamp; 
+        withdrawTimeLock = _withdrawTimeLock; 
+        maxTokensPerBuyer = _maxTokensPerBuyer; 
+        minDecrementRate = _minDecrementRate;
+        maxDecrementRate = _maxDecrementRate;
+    }
 
+    // Function to dynamically update the price decrement rate
+    function updatePriceDecrementRate(uint256 newPriceDecrementRate) public {
+        require(msg.sender == owner, "Only the owner can update the price decrement rate"); // Only the owner can update the rate
+        require(!auctionEnded, "Cannot update price decrement rate after auction has ended"); // Ensure the auction is still ongoing
         require(
-            _startingPrice >= _discountRate * AUCTION_DURATION,
-            "Starting price is too low"
-        );
+            newPriceDecrementRate >= minDecrementRate && newPriceDecrementRate <= maxDecrementRate,
+            "New price decrement rate must be within allowed range"
+        ); // Ensure the new decrement rate is within allowed limits
 
-        token = IERC20(_token);
-        tokenQty = _tokenQty;
-        tokenId = _tokenId;
-
-        tokenNetWorthPool = (startingPrice * tokenQty) / 10 ** 18;
-
-        emit AuctionCreated(
-            seller,
-            _token,
-            tokenQty,
-            startingPrice,
-            discountRate
-        );
+        priceDecrementRate = newPriceDecrementRate; // Update the price decrement rate
+        emit PriceDecrementRateUpdated(newPriceDecrementRate); // Emit an event indicating the update
     }
 
-    function startAuction() external onlySeller onlyNotStarted {
-        injectTokens();
-        require(
-            tokenQty == token.balanceOf(address(this)),
-            "Not enough tokens injected"
-        );
-        startAt = block.timestamp;
-        revealAt = block.timestamp + AUCTION_DURATION;
-        endAt = revealAt + REVEAL_DURATION;
-        status = Status.Active;
-        emit StartOfAuction();
-    }
-
-    function injectTokens() internal onlySeller onlyNotStarted {
-        token.transferFrom(msg.sender, address(this), tokenQty);
-        emit DespositTokens(msg.sender, tokenQty); //TODO: add tons of checks + tests
-    }
-
-    function getPrice(uint time_now) public view returns (uint) {
-        if (status == Status.NotStarted) return startingPrice;
-        if (status != Status.Active) {
-            return getReservePrice();
-        }
-        uint timeElapsed = time_now - startAt;
-        uint discount = discountRate * timeElapsed;
-        return startingPrice - discount;
-    }
-
-    function getCurrentTokenNetWorth(
-        uint time_now
-    ) internal view returns (uint) {
-        uint currentPrice = getPrice(time_now);
-        return (currentPrice * tokenQty) / 10 ** 18;
-    }
-
-    function endCommitStage() public onlyActive {
-        status = Status.Revealing;
-        emit EndCommitStage();
-    }
-
-    function endReavealStage() public onlyRevealing {
-        status = Status.Distributing;
-        emit EndRevealStage();
-    }
-
-    function endDistributingStage() public onlyDistributing {
-        distributed = true;
-        status = Status.Ended;
-        emit EndDistributingStage();
-    }
-
-    function getReservePrice() public view returns (uint) {
-        return startingPrice - AUCTION_DURATION * discountRate;
-    }
-
-    function auctionStatusPred(uint time_now) public view returns (Status) {
-        // function for polling
-        Status predStatus;
-        if (startAt == 0) {
-            predStatus = Status.NotStarted;
-        } else if (time_now >= startAt && time_now < revealAt) {
-            predStatus = Status.Active;
-        } else if (time_now >= revealAt && time_now < endAt) {
-            predStatus = Status.Revealing;
-        } else if (time_now >= endAt) {
-            if (distributed) {
-                predStatus = Status.Ended;
-            } else {
-                predStatus = Status.Distributing;
-            }
-        }
-        return predStatus;
-    }
-
-    function addSubmarineToList(address _submarine) external {
-        if (status == Status.Active) {
-            endCommitStage();
-        } else if (status != Status.Revealing) {
-            return;
-        }
-        submarineList.push(_submarine);
-        for (uint i = submarineList.length - 1; i > 0; i--) {
-            ISubmarine submarine = ISubmarine(submarineList[i]);
-            ISubmarine prevSubmarine = ISubmarine(submarineList[i - 1]);
-            if (submarine.timestamp() < prevSubmarine.timestamp()) {
-                address temp = submarineList[i - 1];
-                submarineList[i - 1] = submarineList[i];
-                submarineList[i] = temp;
-            } else {
-                break;
-            }
+    // Function to get the current price of the token
+    function getCurrentPrice() public view returns (uint256) {
+        uint256 elapsed = block.timestamp - startTime; // Calculate the elapsed time since auction start
+        uint256 priceDrop = priceDecrementRate * elapsed; // Calculate the price drop using an linear model
+        if (priceDrop >= startPrice) {
+            return reservePrice;
+        } else {
+            return startPrice - priceDrop;
         }
     }
 
-    function getSubmarineList() public view returns (address[] memory) {
-        return submarineList;
+    // Function to buy tokens during the auction
+    function buyTokens(uint256 amount) public payable nonReentrant {
+        require(!auctionEnded, "Auction has ended"); // Ensure the auction is ongoing
+        require(tokensSold + amount <= tokensAvailable, "Not enough tokens available"); // Ensure enough tokens are available
+        require(tokensPurchasedByBuyer[msg.sender] + amount <= maxTokensPerBuyer, "Purchase exceeds maximum allowed tokens per buyer"); // Ensure buyer does not exceed max limit
+
+        uint256 currentPrice = getCurrentPrice(); // Get the current token price
+        uint256 cost = currentPrice * amount / 1 ether; // Calculate the total cost of tokens
+        require(msg.value >= cost, "Not enough Ether sent"); // Ensure the buyer sends enough Ether
+
+        // Effects
+        tokensSold += amount; // Update the number of tokens sold
+        tokensPurchasedByBuyer[msg.sender] += amount; // Update tokens purchased by the buyer
+
+        // Interaction
+        token.transfer(msg.sender, amount); // Transfer the tokens
+
+        // Refund excess Ether if applicable
+        if (msg.value > cost) {
+            payable(msg.sender).transfer(msg.value - cost); // Refund extra Ether
+        }
+
+        emit TokenPurchased(msg.sender, amount, currentPrice); // Emit a purchase event
+
+        // End auction if all tokens are sold
+        if (tokensSold == tokensAvailable) {
+            endAuction(); // Call endAuction to finalize auction
+        }
     }
 
-    function distributeToken() public payable onlyRevealing {
-        endReavealStage();
-        uint currentTokenNetWorth = 0;
-        uint currentBidNetWorth = 0;
-        uint finalPrice = startingPrice;
-        bool exceededWorth = false;
-        // find final price and refund to submarine owners
-        for (uint i = 0; i < submarineList.length; i++) {
-            ISubmarine submarine = ISubmarine(submarineList[i]);
-            address bidder = submarine.getOwner();
-            if (seenBidders[bidder]) {
-                continue;
-            }
-            seenBidders[bidder] = true;
-            uint submarineBalance = submarine.getBalance();
-            currentTokenNetWorth =
-                (submarine.currentPrice() * tokenQty) /
-                10 ** 18;
-            currentBidNetWorth += submarineBalance;
-            if (!exceededWorth) {
-                finalPrice = submarine.currentPrice();
-            } else {
-                submarine.sendToOwner(submarineBalance);
-                continue;
-            }
-            if (currentBidNetWorth >= currentTokenNetWorth) {
-                // partially refund to the last bidder
-                uint refund = currentBidNetWorth - currentTokenNetWorth;
-                submarine.sendToOwner(refund);
-                exceededWorth = true;
-            }
-        }
-        // distribute token to bidders
-        uint tokenQtyLeft = tokenQty;
-        for (uint i = 0; i < submarineList.length; i++) {
-            if (tokenQtyLeft <= 0) {
-                break;
-            }
-            ISubmarine submarine = ISubmarine(submarineList[i]);
-            uint submarineBalance = submarine.getBalance();
-            uint qty = (submarineBalance * 10 ** 18) / finalPrice;
-            // Send token to bidder
-            console.log("qty left %s", tokenQtyLeft);
-            console.log("transfer %s to %s", qty, submarine.getOwner());
-            console.log("account balance %s", token.balanceOf(address(this)));
-            console.log("submarine balance %s", submarineBalance);
-            console.log("final price %s", finalPrice);
-            token.approve(address(this), min(qty, tokenQtyLeft));
-            token.transferFrom(
-                address(this),
-                submarine.getOwner(),
-                min(qty, tokenQtyLeft)
-            );
+    // Function to manually or automatically end the auction
+    function endAuction() public {
+        require(msg.sender == owner || block.timestamp >= startTime + auctionDuration, "Only the owner can end the auction or auction duration must be over"); // Allow owner or end automatically after duration
+        require(!auctionEnded, "Auction already ended"); // Ensure the auction has not already ended
 
-            // Send ether to seller
-            submarine.sendToAccount(
-                seller,
-                (min(qty, tokenQtyLeft) * finalPrice) / 10 ** 18
-            );
-            tokenQtyLeft -= qty;
-        }
-        // refund to seller
-        if (tokenQtyLeft > 0) {
-            token.burn(address(this), tokenQtyLeft);
-        }
-        endDistributingStage();
+        auctionEnded = true; // Mark the auction as ended
+        emit AuctionEnded(tokensAvailable - tokensSold); // Emit an event indicating auction ended
+    }
+
+    // Function to allow the owner to withdraw collected Ether
+    function withdraw() public {
+        require(msg.sender == owner, "Only the owner can withdraw"); // Only the auction owner can withdraw the Ether
+        require(auctionEnded, "Auction must be ended first"); // Ensure the auction has ended before withdrawal
+        require(block.timestamp >= startTime + auctionDuration + withdrawTimeLock, "Withdrawal is locked"); // Ensure the withdrawal time lock has passed
+        owner.transfer(address(this).balance); // Transfer the contract balance to the auction owner
     }
 }

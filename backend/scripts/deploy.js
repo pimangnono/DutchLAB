@@ -29,7 +29,7 @@ async function main() {
   const deployedReveal = await RevealContract.deploy();
   await deployedReveal.waitForDeployment();
 
-  const SubmarineFactory = await hre.ethers.getContractFactory("SubmarineFactory");
+  const SubmarineFactory = await hre.ethers.getContractFactory("SubmarineSystem");
   const deployedSubFactory = await SubmarineFactory.deploy(deployedReveal.target);
   await deployedSubFactory.waitForDeployment();
 

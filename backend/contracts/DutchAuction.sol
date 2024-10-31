@@ -53,8 +53,8 @@ contract DutchAuction is ReentrancyGuard {
         uint256 _maxDecrementRate
     ) {
         token = DutchAuctionToken(_tokenAddress);
-        owner = payable(_owner); //for testing
-        //owner = payable(msg.sender); // Set the auction owner as the deployer of the contract
+        //owner = payable(_owner); //for testing
+        owner = payable(msg.sender); // Set the auction owner as the deployer of the contract
         startPrice = _startPrice;
         reservePrice = _reservePrice;
         priceDecrementRate = _priceDecrementRate;

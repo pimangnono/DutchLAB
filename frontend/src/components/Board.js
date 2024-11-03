@@ -14,6 +14,7 @@ import {
   TableHead,
   TableRow,
   Paper,
+  Typography,
 } from '@mui/material';
 
 // Styling
@@ -60,6 +61,10 @@ const Board = () => {
   // When page number button is clicked
   const clickPageNumberButton = (num) => {
     setPageNumber(num);
+  };
+
+  const mask = (str) => {
+    return str.slice(0, 6) + '...' + str.slice(str.length - 6, str.length);
   };
 
   const onRowClick = (address) => {
@@ -129,21 +134,35 @@ const Board = () => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell sx={tableHeaderStyle}>Auction</TableCell>
-                <TableCell align="right" sx={tableHeaderStyle}>
-                  Status
+                <TableCell sx={tableHeaderStyle}>
+                  <Typography variant="body1" fontWeight="fontWeightBold">
+                    Auction
+                  </Typography>
                 </TableCell>
                 <TableCell align="right" sx={tableHeaderStyle}>
-                  Remaining Time
+                  <Typography variant="body1" fontWeight="fontWeightBold">
+                    Status
+                  </Typography>
                 </TableCell>
                 <TableCell align="right" sx={tableHeaderStyle}>
-                  Starting Price (ETH)
+                  <Typography variant="body1" fontWeight="fontWeightBold">
+                    Remaining Time
+                  </Typography>
                 </TableCell>
                 <TableCell align="right" sx={tableHeaderStyle}>
-                  Current Price (ETH)
+                  <Typography variant="body1" fontWeight="fontWeightBold">
+                    Starting Price (ETH)
+                  </Typography>
                 </TableCell>
                 <TableCell align="right" sx={tableHeaderStyle}>
-                  Reserve Price (ETH)
+                  <Typography variant="body1" fontWeight="fontWeightBold">
+                    Current Price (ETH)
+                  </Typography>
+                </TableCell>
+                <TableCell align="right" sx={tableHeaderStyle}>
+                  <Typography variant="body1" fontWeight="fontWeightBold">
+                    Reserve Price (ETH)
+                  </Typography>
                 </TableCell>
               </TableRow>
             </TableHead>
@@ -155,7 +174,7 @@ const Board = () => {
                     sx={tableRowStyle}
                     onClick={() => onRowClick(auction.address)}
                   >
-                    <TableCell sx={tableCellStyle}>{auction.address}</TableCell>
+                    <TableCell sx={tableCellStyle}>{mask(auction.address)}</TableCell>
                     <TableCell align="right" sx={tableCellStyle}>
                       {auctionStatusText(auction.status)}
                     </TableCell>

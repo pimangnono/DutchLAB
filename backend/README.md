@@ -1,4 +1,4 @@
-## dutch-auction-backend
+## dutch-lab-backend
 
 - Hardhat tutorial (https://hardhat.org/tutorial)
 

@@ -74,7 +74,7 @@ const Board = () => {
 
   useEffect(() => {
     async function getAuctions() {
-      const auctionCount = parseInt((await dutchAuctionFactoryContract.auctionCount())._hex);
+      const auctionCount = parseInt((await dutchAuctionFactoryContract.getAuctionCount())._hex);
       let auctions = [];
       for (let i = 0; i < auctionCount; i++) {
         const currentTime = Math.floor(Date.now() / 1000);

@@ -1,126 +1,205 @@
-// const {
-//   time,
-//   loadFixture,
-// } = require("@nomicfoundation/hardhat-network-helpers");
-// const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
-// const { expect } = require("chai");
+/*
+Testing method:
+cd backend
+npx hardhat test --config hardhat.config.local.js
+*/
 
-// describe("Lock", function () {
-//   // We define a fixture to reuse the same setup in every test.
-//   // We use loadFixture to run this setup once, snapshot that state,
-//   // and reset Hardhat Network to that snapshot in every test.
-//   async function deployOneYearLockFixture() {
-//     const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-//     const ONE_GWEI = 1_000_000_000;
+// Import necessary dependencies
+const { expect } = require("chai");
+const { ethers } = require("hardhat");
+const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
-//     const lockedAmount = ONE_GWEI;
-//     const unlockTime = (await time.latest()) + ONE_YEAR_IN_SECS;
+describe("DutchAuction and DutchAuctionFactory", function () {
+  async function deployContractsFixture() {
+    // Deploy the DutchAuctionToken
+    const [owner, buyer1, buyer2] = await ethers.getSigners();
+    const initialSupply = ethers.parseEther("1000");
+    const Token = await ethers.getContractFactory("DutchAuctionToken", owner);
+    const token = await Token.connect(owner).deploy(initialSupply);
+    await token.waitForDeployment();
+    console.log("Token deployed at:", token.target);
 
-//     // Contracts are deployed using the first signer/account by default
-//     const [owner, otherAccount] = await ethers.getSigners();
+    // Deploy the DutchAuctionFactory
+    const DutchAuctionFactory = await ethers.getContractFactory("DutchAuctionFactory", owner);
+    const factory = await DutchAuctionFactory.connect(owner).deploy();
+    await factory.waitForDeployment();
+    console.log("Factory deployed at:", factory.target);
 
-//     const Lock = await ethers.getContractFactory("Lock");
-//     const lock = await Lock.deploy(unlockTime, { value: lockedAmount });
+    return { factory, token, owner, buyer1, buyer2 };
+  }
 
-//     return { lock, unlockTime, lockedAmount, owner, otherAccount };
-//   }
+  describe("Factory Deployment", function () {
+    it("Should deploy DutchAuctionFactory contract", async function () {
+      const { factory } = await deployContractsFixture();
+      expect(factory.target).to.be.properAddress;
+    });
 
-//   describe("Deployment", function () {
-//     it("Should set the right unlockTime", async function () {
-//       const { lock, unlockTime } = await loadFixture(deployOneYearLockFixture);
+    it("Should create a new DutchAuction contract", async function () {
+      const { factory, token, owner } = await deployContractsFixture();
 
-//       expect(await lock.unlockTime()).to.equal(unlockTime);
-//     });
+      // Auction parameters
+      const startPrice = ethers.parseEther("1");
+      const reservePrice = ethers.parseEther("0.1");
+      const priceDecrementRate = ethers.parseEther("0.01");
+      const auctionDuration = 7 * 24 * 60 * 60; // 7 days
+      const tokensAvailable = ethers.parseEther("100");
+      const withdrawTimeLock = 3 * 24 * 60 * 60; // 3 days
+      const maxTokensPerBuyer = ethers.parseEther("10");
+      const minDecrementRate = ethers.parseEther("0.005");
+      const maxDecrementRate = ethers.parseEther("0.02");
 
-//     it("Should set the right owner", async function () {
-//       const { lock, owner } = await loadFixture(deployOneYearLockFixture);
+      // Call the factory to create a new DutchAuction
+      const tx = await factory.connect(owner).createDutchAuction(
+        token.target,
+        startPrice,
+        reservePrice,
+        priceDecrementRate,
+        auctionDuration,
+        tokensAvailable,
+        withdrawTimeLock,
+        maxTokensPerBuyer,
+        minDecrementRate,
+        maxDecrementRate
+      );
 
-//       expect(await lock.owner()).to.equal(owner.address);
-//     });
+      await tx.wait();
 
-//     it("Should receive and store the funds to lock", async function () {
-//       const { lock, lockedAmount } = await loadFixture(
-//         deployOneYearLockFixture
-//       );
+      // Verify that an auction was created
+      const auctionCount = await factory.getAuctionCount();
+      console.log("Number of auctions:", auctionCount.toString());
+      expect(auctionCount).to.equal(1);
 
-//       expect(await ethers.provider.getBalance(lock.address)).to.equal(
-//         lockedAmount
-//       );
-//     });
+      const auctionAddress = await factory.getAuction(0);
+      console.log("Auction deployed at:", auctionAddress);
+      expect(auctionAddress).to.be.properAddress;
+    });
+  });
 
-//     it("Should fail if the unlockTime is not in the future", async function () {
-//       // We don't use the fixture here because we want a different deployment
-//       const latestTime = await time.latest();
-//       const Lock = await ethers.getContractFactory("Lock");
-//       await expect(Lock.deploy(latestTime, { value: 1 })).to.be.revertedWith(
-//         "Unlock time should be in the future"
-//       );
-//     });
-//   });
+  describe("DutchAuction Functionality", function () {
+    it("Should deploy a DutchAuction and allow token purchase", async function () {
+      const { factory, token, owner, buyer1 } = await deployContractsFixture();
 
-//   describe("Withdrawals", function () {
-//     describe("Validations", function () {
-//       it("Should revert with the right error if called too soon", async function () {
-//         const { lock } = await loadFixture(deployOneYearLockFixture);
+      // Deploy an auction
+      const startPrice = ethers.parseEther("1");
+      const reservePrice = ethers.parseEther("0.1");
+      const priceDecrementRate = ethers.parseEther("0.01");
+      const auctionDuration = 7 * 24 * 60 * 60;
+      const tokensAvailable = ethers.parseEther("100");
+      const withdrawTimeLock = 3 * 24 * 60 * 60;
+      const maxTokensPerBuyer = ethers.parseEther("10");
+      const minDecrementRate = ethers.parseEther("0.005");
+      const maxDecrementRate = ethers.parseEther("0.02");
 
-//         await expect(lock.withdraw()).to.be.revertedWith(
-//           "You can't withdraw yet"
-//         );
-//       });
+      const tx = await factory.connect(owner).createDutchAuction(
+        token.target,
+        startPrice,
+        reservePrice,
+        priceDecrementRate,
+        auctionDuration,
+        tokensAvailable,
+        withdrawTimeLock,
+        maxTokensPerBuyer,
+        minDecrementRate,
+        maxDecrementRate
+      );
 
-//       it("Should revert with the right error if called from another account", async function () {
-//         const { lock, unlockTime, otherAccount } = await loadFixture(
-//           deployOneYearLockFixture
-//         );
+      await tx.wait();
+      const auctionAddress = await factory.getAuction(0);
+      console.log("Auction deployed at:", auctionAddress);
+      const DutchAuction = await ethers.getContractFactory("DutchAuction");
+      const auction = DutchAuction.attach(auctionAddress);
 
-//         // We can increase the time in Hardhat Network
-//         await time.increaseTo(unlockTime);
+      // Transfer some tokens to the auction
+      await token.connect(owner).transfer(auctionAddress, tokensAvailable);
 
-//         // We use lock.connect() to send a transaction from another account
-//         await expect(lock.connect(otherAccount).withdraw()).to.be.revertedWith(
-//           "You aren't the owner"
-//         );
-//       });
+      // Buyer purchases tokens after the auction starts
+      await ethers.provider.send("evm_increaseTime", [3600]); // Fast forward time by 1 hour
+      await ethers.provider.send("evm_mine");
 
-//       it("Shouldn't fail if the unlockTime has arrived and the owner calls it", async function () {
-//         const { lock, unlockTime } = await loadFixture(
-//           deployOneYearLockFixture
-//         );
+      const amountToBuy = ethers.parseEther("5");
+      const currentPrice = await auction.getCurrentPrice();
+      const totalCost = (currentPrice * amountToBuy) / ethers.parseEther("1");
 
-//         // Transactions are sent using the first signer by default
-//         await time.increaseTo(unlockTime);
+      await auction.connect(buyer1).buyTokens(amountToBuy, {
+        value: totalCost,
+      });
 
-//         await expect(lock.withdraw()).not.to.be.reverted;
-//       });
-//     });
+      // Check buyer balance
+      const buyerBalance = await token.balanceOf(buyer1.address);
+      expect(buyerBalance).to.equal(amountToBuy);
 
-//     describe("Events", function () {
-//       it("Should emit an event on withdrawals", async function () {
-//         const { lock, unlockTime, lockedAmount } = await loadFixture(
-//           deployOneYearLockFixture
-//         );
+      // Check remaining tokens in auction
+      const tokensLeft = await token.balanceOf(auctionAddress);
+      expect(tokensLeft).to.equal(tokensAvailable - amountToBuy);
+    });
 
-//         await time.increaseTo(unlockTime);
+    it("Should end auction correctly and allow withdrawal by owner", async function () {
+      const { factory, token, owner } = await deployContractsFixture();
 
-//         await expect(lock.withdraw())
-//           .to.emit(lock, "Withdrawal")
-//           .withArgs(lockedAmount, anyValue); // We accept any value as `when` arg
-//       });
-//     });
+      // Deploy an auction
+      const startPrice = ethers.parseEther("1");
+      const reservePrice = ethers.parseEther("0.1");
+      const priceDecrementRate = ethers.parseEther("0.01");
+      const auctionDuration = 7 * 24 * 60 * 60;
+      const tokensAvailable = ethers.parseEther("100");
+      const withdrawTimeLock = 3 * 24 * 60 * 60;
+      const maxTokensPerBuyer = ethers.parseEther("10");
+      const minDecrementRate = ethers.parseEther("0.005");
+      const maxDecrementRate = ethers.parseEther("0.02");
 
-//     describe("Transfers", function () {
-//       it("Should transfer the funds to the owner", async function () {
-//         const { lock, unlockTime, lockedAmount, owner } = await loadFixture(
-//           deployOneYearLockFixture
-//         );
+      const tx = await factory.connect(owner).createDutchAuction(
+        token.target,
+        startPrice,
+        reservePrice,
+        priceDecrementRate,
+        auctionDuration,
+        tokensAvailable,
+        withdrawTimeLock,
+        maxTokensPerBuyer,
+        minDecrementRate,
+        maxDecrementRate
+      );
 
-//         await time.increaseTo(unlockTime);
 
-//         await expect(lock.withdraw()).to.changeEtherBalances(
-//           [owner, lock],
-//           [lockedAmount, -lockedAmount]
-//         );
-//       });
-//     });
-//   });
-// });
+      await tx.wait();
+      const auctionAddress = await factory.getAuction(0);
+      console.log("Auction deployed at:", auctionAddress);
+      const DutchAuction = await ethers.getContractFactory("DutchAuction");
+      const auction = DutchAuction.attach(auctionAddress);
+
+      ////testing if owner matches auction creator ////
+      console.log("Owner Address in Test:", owner.address);
+      console.log("Owner Address in Contract:", await auction.owner());
+
+      expect(await auction.owner()).to.equal(owner.address);
+      /////////////////////////////////////////////////
+
+
+      // Fast forward to end the auction duration
+      await ethers.provider.send("evm_increaseTime", [auctionDuration]);
+      await ethers.provider.send("evm_mine");
+
+      // End the auction
+      await auction.connect(owner).endAuction();
+
+      // Fast forward to allow owner withdrawal
+      await ethers.provider.send("evm_increaseTime", [withdrawTimeLock]);
+      await ethers.provider.send("evm_mine");
+
+      const ownerInitialBalance = await ethers.provider.getBalance(owner.address);
+
+
+
+      // Withdraw funds as owner
+      await auction.connect(owner).withdraw();
+
+      // Check the owner’s balance to ensure they received the funds
+      const ownerFinalBalance = await ethers.provider.getBalance(owner.address);
+
+      // Define a delta to account for gas cost differences
+      const delta = ethers.parseEther("0.01"); // Allow a small difference of 0.01 ether
+
+      expect(ownerFinalBalance).to.be.closeTo(ownerInitialBalance, delta);
+    });
+  });
+});

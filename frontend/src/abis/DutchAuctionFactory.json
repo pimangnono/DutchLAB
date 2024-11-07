@@ -5,38 +5,12 @@
       {
         "indexed": false,
         "internalType": "address",
-        "name": "tokenAddress",
-        "type": "address"
-      }
-    ],
-    "name": "AuctionDe",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
         "name": "auctionAddress",
         "type": "address"
       }
     ],
-    "name": "AuctionDeployed",
+    "name": "AuctionCreated",
     "type": "event"
-  },
-  {
-    "inputs": [],
-    "name": "auctionCount",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
   },
   {
     "inputs": [
@@ -61,13 +35,8 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "_token",
+        "name": "_tokenAddress",
         "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_qty",
-        "type": "uint256"
       },
       {
         "internalType": "uint256",
@@ -76,11 +45,59 @@
       },
       {
         "internalType": "uint256",
-        "name": "_discountRate",
+        "name": "_reservePrice",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_priceDecrementRate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_auctionDuration",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_tokensAvailable",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_withdrawTimeLock",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_maxTokensPerBuyer",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_minDecrementRate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_maxDecrementRate",
         "type": "uint256"
       }
     ],
-    "name": "deployAuction",
+    "name": "createDutchAuction",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "getAuction",
     "outputs": [
       {
         "internalType": "address",
@@ -88,7 +105,20 @@
         "type": "address"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getAuctionCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   }
 ]

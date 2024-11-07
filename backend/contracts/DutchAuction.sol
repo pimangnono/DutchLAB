@@ -30,13 +30,16 @@ contract DutchAuction is ReentrancyGuard {
     uint256 public maxTokensPerBuyer; // Maximum tokens each buyer can purchase
     uint256 public minDecrementRate; // Minimum allowed price decrement rate
     uint256 public maxDecrementRate; // Maximum allowed price decrement rate
+    bool public distributed = false; // Flag indicating if tokens have been distributed
 
     mapping(address => uint256) public tokensPurchasedByBuyer; // Track tokens purchased by each buyer
+    address[] public buyers; // List of buyers to distribute tokens
 
     // Events to broadcast key actions during the auction
     event TokenPurchased(address buyer, uint256 amount, uint256 price);
     event AuctionEnded(uint256 tokensUnsold);
     event PriceDecrementRateUpdated(uint256 newPriceDecrementRate);
+    event TokensDistributed();
 
     // Constructor to initialize auction parameters
     constructor(
@@ -53,8 +56,7 @@ contract DutchAuction is ReentrancyGuard {
         uint256 _maxDecrementRate
     ) {
         token = DutchAuctionToken(_tokenAddress);
-        //owner = payable(_owner); //for testing
-        owner = payable(msg.sender); // Set the auction owner as the deployer of the contract
+        owner = payable(_owner); // Set the auction owner
         startPrice = _startPrice;
         reservePrice = _reservePrice;
         priceDecrementRate = _priceDecrementRate;
@@ -69,28 +71,22 @@ contract DutchAuction is ReentrancyGuard {
 
     // Function to dynamically update the price decrement rate
     function updatePriceDecrementRate(uint256 newPriceDecrementRate) public {
-        require(
-            msg.sender == owner,
-            "Only the owner can update the price decrement rate"
-        ); // Only the owner can update the rate
-        require(
-            !auctionEnded,
-            "Cannot update price decrement rate after auction has ended"
-        ); // Ensure the auction is still ongoing
+        require(msg.sender == owner, "Only the owner can update the price decrement rate");
+        require(!auctionEnded, "Cannot update price decrement rate after auction has ended");
         require(
             newPriceDecrementRate >= minDecrementRate &&
                 newPriceDecrementRate <= maxDecrementRate,
             "New price decrement rate must be within allowed range"
-        ); // Ensure the new decrement rate is within allowed limits
+        );
 
-        priceDecrementRate = newPriceDecrementRate; // Update the price decrement rate
-        emit PriceDecrementRateUpdated(newPriceDecrementRate); // Emit an event indicating the update
+        priceDecrementRate = newPriceDecrementRate;
+        emit PriceDecrementRateUpdated(newPriceDecrementRate);
     }
 
     // Function to get the current price of the token
     function getCurrentPrice() public view returns (uint256) {
-        uint256 elapsed = block.timestamp - startTime; // Calculate the elapsed time since auction start
-        uint256 priceDrop = priceDecrementRate * elapsed; // Calculate the price drop using an linear model
+        uint256 elapsed = block.timestamp - startTime;
+        uint256 priceDrop = priceDecrementRate * elapsed;
         if (priceDrop >= startPrice) {
             return reservePrice;
         } else {
@@ -100,61 +96,68 @@ contract DutchAuction is ReentrancyGuard {
 
     // Function to buy tokens during the auction
     function buyTokens(uint256 amount) public payable nonReentrant {
-        require(!auctionEnded, "Auction has ended"); // Ensure the auction is ongoing
-        require(
-            tokensSold + amount <= tokensAvailable,
-            "Not enough tokens available"
-        ); // Ensure enough tokens are available
+        require(!auctionEnded, "Auction has ended");
+        require(tokensSold + amount <= tokensAvailable, "Not enough tokens available");
         require(
             tokensPurchasedByBuyer[msg.sender] + amount <= maxTokensPerBuyer,
             "Purchase exceeds maximum allowed tokens per buyer"
-        ); // Ensure buyer does not exceed max limit
+        );
 
-        uint256 currentPrice = getCurrentPrice(); // Get the current token price
-        uint256 cost = (currentPrice * amount) / 1 ether; // Calculate the total cost of tokens
-        require(msg.value >= cost, "Not enough Ether sent"); // Ensure the buyer sends enough Ether
+        uint256 currentPrice = getCurrentPrice();
+        uint256 cost = (currentPrice * amount) / 1 ether;
+        require(msg.value >= cost, "Not enough Ether sent");
 
         // Effects
-        tokensSold += amount; // Update the number of tokens sold
-        tokensPurchasedByBuyer[msg.sender] += amount; // Update tokens purchased by the buyer
-
-        // Interaction
-        token.transfer(msg.sender, amount); // Transfer the tokens
+        tokensSold += amount;
+        tokensPurchasedByBuyer[msg.sender] += amount;
+        buyers.push(msg.sender); // Add buyer to the list
 
         // Refund excess Ether if applicable
         if (msg.value > cost) {
-            payable(msg.sender).transfer(msg.value - cost); // Refund extra Ether
+            payable(msg.sender).transfer(msg.value - cost);
         }
 
-        emit TokenPurchased(msg.sender, amount, currentPrice); // Emit a purchase event
+        emit TokenPurchased(msg.sender, amount, currentPrice);
 
-        // End auction if all tokens are sold
         if (tokensSold == tokensAvailable) {
-            endAuction(); // Call endAuction to finalize auction
+            endAuction();
         }
     }
 
     // Function to manually or automatically end the auction
     function endAuction() public {
         require(
-            msg.sender == owner ||
-                block.timestamp >= startTime + auctionDuration,
+            msg.sender == owner || block.timestamp >= startTime + auctionDuration,
             "Only the owner can end the auction or auction duration must be over"
-        ); // Allow owner or end automatically after duration
-        require(!auctionEnded, "Auction already ended"); // Ensure the auction has not already ended
+        );
+        require(!auctionEnded, "Auction already ended");
 
-        auctionEnded = true; // Mark the auction as ended
-        emit AuctionEnded(tokensAvailable - tokensSold); // Emit an event indicating auction ended
+        auctionEnded = true;
+        emit AuctionEnded(tokensAvailable - tokensSold);
+    }
+
+    // Function to distribute tokens to buyers after the auction ends
+    function distributeTokens() public nonReentrant {
+        require(auctionEnded, "Auction has not ended yet");
+        require(!distributed, "Tokens have already been distributed");
+
+        for (uint256 i = 0; i < buyers.length; i++) {
+            address buyer = buyers[i];
+            uint256 amount = tokensPurchasedByBuyer[buyer];
+            if (amount > 0) {
+                token.transfer(buyer, amount); // Transfer tokens to each buyer
+            }
+        }
+
+        distributed = true; // Mark tokens as distributed
+        emit TokensDistributed();
     }
 
     // Function to allow the owner to withdraw collected Ether
     function withdraw() public {
-        require(msg.sender == owner, "Only the owner can withdraw"); // Only the auction owner can withdraw the Ether
-        require(auctionEnded, "Auction must be ended first"); // Ensure the auction has ended before withdrawal
-        require(
-            block.timestamp >= startTime + auctionDuration + withdrawTimeLock,
-            "Withdrawal is locked"
-        ); // Ensure the withdrawal time lock has passed
-        owner.transfer(address(this).balance); // Transfer the contract balance to the auction owner
+        require(msg.sender == owner, "Only the owner can withdraw");
+        require(auctionEnded, "Auction must be ended first");
+        require(block.timestamp >= startTime + auctionDuration + withdrawTimeLock, "Withdrawal is locked");
+        owner.transfer(address(this).balance);
     }
 }

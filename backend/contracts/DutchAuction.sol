@@ -71,8 +71,14 @@ contract DutchAuction is ReentrancyGuard {
 
     // Function to dynamically update the price decrement rate
     function updatePriceDecrementRate(uint256 newPriceDecrementRate) public {
-        require(msg.sender == owner, "Only the owner can update the price decrement rate");
-        require(!auctionEnded, "Cannot update price decrement rate after auction has ended");
+        require(
+            msg.sender == owner,
+            "Only the owner can update the price decrement rate"
+        );
+        require(
+            !auctionEnded,
+            "Cannot update price decrement rate after auction has ended"
+        );
         require(
             newPriceDecrementRate >= minDecrementRate &&
                 newPriceDecrementRate <= maxDecrementRate,
@@ -97,7 +103,10 @@ contract DutchAuction is ReentrancyGuard {
     // Function to buy tokens during the auction
     function buyTokens(uint256 amount) public payable nonReentrant {
         require(!auctionEnded, "Auction has ended");
-        require(tokensSold + amount <= tokensAvailable, "Not enough tokens available");
+        require(
+            tokensSold + amount <= tokensAvailable,
+            "Not enough tokens available"
+        );
         require(
             tokensPurchasedByBuyer[msg.sender] + amount <= maxTokensPerBuyer,
             "Purchase exceeds maximum allowed tokens per buyer"
@@ -127,7 +136,8 @@ contract DutchAuction is ReentrancyGuard {
     // Function to manually or automatically end the auction
     function endAuction() public {
         require(
-            msg.sender == owner || block.timestamp >= startTime + auctionDuration,
+            msg.sender == owner ||
+                block.timestamp >= startTime + auctionDuration,
             "Only the owner can end the auction or auction duration must be over"
         );
         require(!auctionEnded, "Auction already ended");
@@ -157,7 +167,10 @@ contract DutchAuction is ReentrancyGuard {
     function withdraw() public {
         require(msg.sender == owner, "Only the owner can withdraw");
         require(auctionEnded, "Auction must be ended first");
-        require(block.timestamp >= startTime + auctionDuration + withdrawTimeLock, "Withdrawal is locked");
+        require(
+            block.timestamp >= startTime + auctionDuration + withdrawTimeLock,
+            "Withdrawal is locked"
+        );
         owner.transfer(address(this).balance);
     }
 }

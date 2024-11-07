@@ -8,7 +8,6 @@ export const boardStyle = {
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  backgroundColor: '#f5f5f5',
   width: '80%',
   marginTop: '5rem',
 };
@@ -22,7 +21,6 @@ export const paginationStyle = {
 export const tableHeaderStyle = {
   fontSize: '1.25rem',
   fontWeight: 'bold',
-  color: '#0288d1',
 };
 
 export const tableCellStyle = {

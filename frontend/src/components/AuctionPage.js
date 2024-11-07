@@ -36,7 +36,6 @@ import {
 
 const AuctionPage = () => {
   const [loading, setLoading] = useState(true);
-  const currentTime = Math.floor(Date.now() / 1000);
   const currentURL = window.location.href;
   const splitParts = currentURL.split('/');
   const auctionAddress = splitParts[splitParts.length - 1];
@@ -63,6 +62,8 @@ const AuctionPage = () => {
     status: 0,
   });
   const [count, setCount] = useState(0);
+  const [revealAt, setRevealAt] = useState(null);
+  const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000));
 
   useEffect(() => {
     async function getAuctionInfo() {
@@ -107,14 +108,8 @@ const AuctionPage = () => {
       }
 
       if (auctionStatus == 1) {
-        const revealAt = parseInt((await dutchAuctionContract.revealAt())._hex);
-        const placeBidTimeRemaining = Math.max(revealAt - currentTime, 0);
-        newAuction.placeBidTimeRemaining = convertUnixTimeToMinutes(placeBidTimeRemaining);
-
-        const currentPrice = convertWeiToEth(
-          ethers.BigNumber.from((await dutchAuctionContract.getPrice(currentTime))._hex),
-        );
-        newAuction.currentPrice = currentPrice;
+        const revealAtTime = parseInt((await dutchAuctionContract.revealAt())._hex);
+        setRevealAt(revealAtTime);
       }
 
       if (auctionStatus === 2) {
@@ -140,6 +135,28 @@ const AuctionPage = () => {
     getAuctionInfo();
     setLoading(false);
   }, [count]);
+
+  useEffect(() => {
+    if (revealAt !== null) {
+      const intervalId = setInterval(async () => {
+        const newTimeRemaining = Math.max(revealAt - currentTime, 0);
+        setAuction((prevAuction) => ({
+          ...prevAuction,
+          placeBidTimeRemaining: convertUnixTimeToMinutes(newTimeRemaining),
+        }));
+        setCurrentTime((prevTime) => prevTime + 1);
+        const currentPrice = convertWeiToEth(
+          ethers.BigNumber.from((await dutchAuctionContract.getPrice(currentTime))._hex),
+        );
+        setAuction((prevAuction) => ({
+          ...prevAuction,
+          currentPrice,
+        }));
+      }, 1000);
+
+      return () => clearInterval(intervalId);
+    }
+  }, [revealAt, currentTime]);
 
   const dutchAuctionContract = getDutchAuctionContract(auctionAddress);
   async function startAuction() {

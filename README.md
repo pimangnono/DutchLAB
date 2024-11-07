@@ -2,7 +2,7 @@
 
 ## Table of Contents
 
-- [dutch-auction](#dutch-auction)
+- [dutch-lab](#dutch-lab)
   - [Table of Contents](#table-of-contents)
   - [Features](#features)
   - [Getting Started](#getting-started)

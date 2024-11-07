@@ -4,13 +4,25 @@
   margin-left: 15px;
 }
 
+.nav__image-container {
+  display: flex;
+  color: #90caf9;
+  align-items: center;
+  gap: 8px; 
+  }
+
+.nav__link {
+  display: flex;
+  align-items: center;
+}
+
 .nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
   position: sticky;
   top: 0;
-  background-color: #ffffff;
+  background-color: #282828;
   width: 100%;
   z-index: 100;
   box-shadow: 0 0 7px 0px #cecece;

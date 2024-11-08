@@ -88,7 +88,7 @@
         "type": "uint256"
       }
     ],
-    "name": "DespositTokens",
+    "name": "DepositTokens",
     "type": "event"
   },
   {
@@ -146,7 +146,7 @@
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "_qtyAlloacated",
+        "name": "_qtyAllocated",
         "type": "uint256"
       },
       {
@@ -183,19 +183,6 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_submarine",
-        "type": "address"
-      }
-    ],
-    "name": "addSubmarineToList",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -251,27 +238,6 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "endCommitStage",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "endDistributingStage",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "endReavealStage",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -298,19 +264,6 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getSubmarineList",
-    "outputs": [
-      {
-        "internalType": "address[]",
-        "name": "",
-        "type": "address[]"
       }
     ],
     "stateMutability": "view",

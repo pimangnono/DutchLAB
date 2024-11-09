@@ -2,12 +2,12 @@
 
 ## Overview 
   - [Overview](#overview)
-  - [Features/Key Functions](#features/keyfeatures)
+  - [Features](#features)
   - [Setup Guide](#setup-guide)
     - [Installation](#installation)
-  - [Instructions](#instructions)
+  - [How to Use](#how-to-use)
 
-## Features/Key Functions
+## Features
 
 **FrontEnd**
 - ReactJS
@@ -51,7 +51,7 @@ npm run start
 npm run start:windows
 ```
 
-## Instructions
+## How to Use
 
 ### Here are the steps:
 

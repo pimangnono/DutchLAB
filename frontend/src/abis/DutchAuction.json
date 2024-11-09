@@ -218,10 +218,16 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "distributeToken",
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "batchSize",
+        "type": "uint256"
+      }
+    ],
+    "name": "distributeTokensBatch",
     "outputs": [],
-    "stateMutability": "payable",
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

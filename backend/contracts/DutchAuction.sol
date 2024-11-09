@@ -1,49 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-//import "hardhat/console.sol" as Console;
+import "hardhat/console.sol";
 
 interface IERC20 {
     function totalSupply() external view returns (uint256);
-
     function balanceOf(address account) external view returns (uint256);
-
-    function transfer(
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
-
-    function allowance(
-        address owner,
-        address spender
-    ) external view returns (uint256);
-
+    function transfer(address recipient, uint256 amount) external returns (bool);
+    function allowance(address owner, address spender) external view returns (uint256);
     function approve(address spender, uint256 amount) external returns (bool);
-
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
-
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
     function burn(address account, uint256 amount) external;
 }
 
 interface ISubmarine {
     function timestamp() external view returns (uint);
-
     function currentPrice() external view returns (uint);
-
     function getOwner() external view returns (address);
-
     function getBalance() external view returns (uint);
-
     function sendToOwner(uint amount) external payable;
-
-    function sendToAccount(
-        address payable account,
-        uint amount
-    ) external payable;
+    function sendToAccount(address payable account, uint amount) external payable;
 }
 
 function min(uint256 a, uint256 b) pure returns (uint256) {
@@ -66,6 +42,7 @@ contract DutchAuction {
     uint public endAt = 0;
     bool distributed = false;
     bool private locked = false; // Prevent re-entrancy
+    uint private lastDistributedIndex = 0; // For batch processing
     enum Status {
         NotStarted,
         Active,
@@ -81,24 +58,14 @@ contract DutchAuction {
     address[] private submarineList;
     mapping(address => bool) private seenBidders;
 
-    event AuctionCreated(
-        address indexed _seller,
-        address indexed _token,
-        uint _qty,
-        uint startPrice,
-        uint discountRate
-    );
+    event AuctionCreated(address indexed _seller, address indexed _token, uint _qty, uint startPrice, uint discountRate);
     event StartOfAuction();
     event DepositTokens(address indexed _from, uint indexed _qty);
     event LogBid(address indexed _from, uint indexed _price);
     event EndCommitStage();
     event EndRevealStage();
     event EndDistributingStage();
-    event SuccessfulBid(
-        address indexed _bidder,
-        uint _qtyAllocated,
-        uint refund
-    );
+    event SuccessfulBid(address indexed _bidder, uint _qtyAllocated, uint refund);
 
     modifier onlyNotSeller() {
         require(msg.sender != seller, "The seller cannot perform this action");
@@ -106,18 +73,12 @@ contract DutchAuction {
     }
 
     modifier onlySeller() {
-        require(
-            msg.sender == seller,
-            "Only the seller can perform this action"
-        );
+        require(msg.sender == seller, "Only the seller can perform this action");
         _;
     }
 
     modifier onlyNotStarted() {
-        require(
-            status == Status.NotStarted,
-            "This auction has already started"
-        );
+        require(status == Status.NotStarted, "This auction has already started");
         _;
     }
 
@@ -127,18 +88,12 @@ contract DutchAuction {
     }
 
     modifier onlyRevealing() {
-        require(
-            status == Status.Revealing,
-            "This auction is not in revealing stage"
-        );
+        require(status == Status.Revealing, "This auction is not in revealing stage");
         _;
     }
 
     modifier onlyDistributing() {
-        require(
-            status == Status.Distributing,
-            "This auction is not in distributing stage"
-        );
+        require(status == Status.Distributing, "This auction is not in distributing stage");
         _;
     }
 
@@ -177,13 +132,7 @@ contract DutchAuction {
 
         tokenNetWorthPool = (startingPrice * tokenQty) / 10 ** 18;
 
-        emit AuctionCreated(
-            seller,
-            _token,
-            tokenQty,
-            startingPrice,
-            discountRate
-        );
+        emit AuctionCreated(seller, _token, tokenQty, startingPrice, discountRate);
     }
 
     function startAuction() external onlySeller onlyNotStarted {
@@ -200,17 +149,12 @@ contract DutchAuction {
     }
 
     function injectTokens() internal onlySeller onlyNotStarted {
-        // Check if enough allowance is provided for the contract to transfer tokens
-        require(
-            token.allowance(msg.sender, address(this)) >= tokenQty,
-            "Not enough allowance for token transfer"
-        );
+        require(token.allowance(msg.sender, address(this)) >= tokenQty, "Not enough allowance for token transfer");
         token.transferFrom(msg.sender, address(this), tokenQty);
         emit DepositTokens(msg.sender, tokenQty);
     }
 
     function getPrice(uint time_now) public view returns (uint) {
-        // Ensure that the input time is valid (not in the past)
         require(time_now >= startAt, "Invalid time input");
 
         if (status == Status.NotStarted) return startingPrice;
@@ -219,11 +163,8 @@ contract DutchAuction {
         }
         uint timeElapsed = time_now - startAt;
         uint discount = discountRate * timeElapsed;
-        uint currentPrice = startingPrice > discount
-            ? startingPrice - discount
-            : 0;
+        uint currentPrice = startingPrice > discount ? startingPrice - discount : 0;
 
-        // Ensure price does not fall below the reserve price
         uint reservePrice = getReservePrice();
         return currentPrice > reservePrice ? currentPrice : reservePrice;
     }
@@ -232,15 +173,9 @@ contract DutchAuction {
         return startingPrice - AUCTION_DURATION * discountRate;
     }
 
-    function distributeToken() public payable onlyRevealing nonReentrant {
-        endRevealStage();
-        uint currentTokenNetWorth = 0;
-        uint currentBidNetWorth = 0;
-        uint finalPrice = startingPrice;
-        bool exceededWorth = false;
-
-        // Find final price and refund to submarine owners
-        for (uint i = 0; i < submarineList.length; i++) {
+    function distributeTokensBatch(uint batchSize) public onlyDistributing nonReentrant {
+        uint batchEnd = min(submarineList.length, lastDistributedIndex + batchSize);
+        for (uint i = lastDistributedIndex; i < batchEnd; i++) {
             ISubmarine submarine = ISubmarine(submarineList[i]);
             address bidder = submarine.getOwner();
             if (seenBidders[bidder]) {
@@ -248,60 +183,29 @@ contract DutchAuction {
             }
             seenBidders[bidder] = true;
             uint submarineBalance = submarine.getBalance();
-            currentTokenNetWorth =
-                (submarine.currentPrice() * tokenQty) /
-                10 ** 18;
-            currentBidNetWorth += submarineBalance;
+            uint currentTokenNetWorth = (submarine.currentPrice() * tokenQty) / 10 ** 18;
+            currentBidNetWorthPool += submarineBalance;
+            uint finalPrice = submarine.currentPrice();
 
-            if (!exceededWorth) {
-                finalPrice = submarine.currentPrice();
-            } else {
-                // Add error handling for external calls
-                try submarine.sendToOwner(submarineBalance) {} catch {
-                    //Console.log("Failed to send balance to submarine owner");
-                }
-                continue;
-            }
-
-            if (currentBidNetWorth >= currentTokenNetWorth) {
-                uint refund = currentBidNetWorth - currentTokenNetWorth;
-                // Add error handling for refund
+            if (currentBidNetWorthPool >= currentTokenNetWorth) {
+                uint refund = currentBidNetWorthPool - currentTokenNetWorth;
                 try submarine.sendToOwner(refund) {} catch {
-                    //Console.log("Failed to refund to submarine owner");
+                    console.log("Failed to refund to submarine owner");
                 }
-                exceededWorth = true;
+                currentBidNetWorthPool = currentTokenNetWorth;
             }
-        }
 
-        // Distribute tokens to bidders
-        uint tokenQtyLeft = tokenQty;
-        for (uint i = 0; i < submarineList.length && tokenQtyLeft > 0; i++) {
-            ISubmarine submarine = ISubmarine(submarineList[i]);
-            uint submarineBalance = submarine.getBalance();
             uint qty = (submarineBalance * 10 ** 18) / finalPrice;
-
-            // Send token to bidder
-            //Console.log("qty left %s", tokenQtyLeft);
-            //Console.log("transfer %s to %s", qty, submarine.getOwner());
-            token.transfer(submarine.getOwner(), min(qty, tokenQtyLeft));
-
-            // Send ether to seller
-            submarine.sendToAccount(
-                seller,
-                (min(qty, tokenQtyLeft) * finalPrice) / 10 ** 18
-            );
-            tokenQtyLeft -= qty;
+            qty = min(qty, tokenQty - lastDistributedIndex);
+            token.transfer(submarine.getOwner(), qty);
+            submarine.sendToAccount(seller, (qty * finalPrice) / 10 ** 18);
+            lastDistributedIndex += qty;
         }
-
-        // Refund tokens to seller
-        if (tokenQtyLeft > 0) {
-            token.burn(address(this), tokenQtyLeft);
+        if (lastDistributedIndex == tokenQty) {
+            endDistributingStage();
         }
-
-        endDistributingStage();
     }
 
-    // Helper functions to manage stages and ensure orderly progress
     function endRevealStage() internal onlyRevealing {
         status = Status.Distributing;
         emit EndRevealStage();
@@ -314,7 +218,6 @@ contract DutchAuction {
     }
 
     function auctionStatusPred(uint time_now) public view returns (Status) {
-        // function for polling
         Status predStatus;
         if (startAt == 0) {
             predStatus = Status.NotStarted;

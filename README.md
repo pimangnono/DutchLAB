@@ -1,32 +1,25 @@
 <img width="537" alt="image" src="https://github.com/user-attachments/assets/acf10de9-d567-464b-ab58-150447490f58">
 
-## Table of Contents
-
-- [dutch-lab](#dutch-lab)
-  - [Table of Contents](#table-of-contents)
-  - [Features](#features)
-  - [Getting Started](#getting-started)
-    - [Prerequisites](#prerequisites)
+## Overview 
+  - [Overview](#overview)
+  - [Features/Key Functions](#features)
+  - [Setup Guide](#setup-guide)
     - [Installation](#installation)
-  - [Usage](#usage)
+  - [Instructions](#instructions)
 
 ## Features
 
-- React JavaScript Frontend w/ EthersJS
-- Material UI styling
-- Solidity (Hardhat) for contracts development
-- Alchemy, Sepolia and Github Pages deployment
+**FrontEnd**
+- ReactJS
+- MaterialUI
+**SmartContract**
+- Solidity (Hardhat)
 
-## Getting Started
-
-### Prerequisites
-
-- JS and Solidity knowledge
-- An understanding of blockchain transactions
+## Setup Guide
 
 ### Installation
 
-1. Download Metamask [here](https://metamask.io/)
+1. Download Metamask
 
 2. Start the node and deploy the contracts
 
@@ -57,30 +50,25 @@ npm run start
 npm run start:windows
 ```
 
-## Usage
+## Instructions
 
 ### Here are the steps:
 
-#### 1. Import account and add the following network to your Metamask wallet
-
+#### 1.  Import Account and Add Network to Metamask.
+Open your Metamask wallet, import the account using your private key, and add the specified local network to connect to your Ethereum node.
 ![Add network](assets/add_network.png)
 
-#### 2. Deploy token and create an auction
+#### 2.  Deploy Token and Create an Auction
+Deploy the token contract and initialize an auction. This setup will allow other accounts to participate in bidding.
 
-![Create auction](assets/create_auction.png)
+#### 3. Start the Auction
+Start the auction to begin the countdown for the bidding period. Once started, users can begin placing bids within the specified timeframe
 
-#### 3. Start the auction
+#### 4. Change Account and Place a Bid
+Switch to a different account in Metamask, navigate to the auction interface, and place your bid. Ensure that your bid amount complies with the auction’s parameters.
 
-![Start auction](assets/start_auction.png)
+#### 5. Reveal the Bid After the Bidding Period Ends
+After the bidding period ends, each bidder should reveal their bid by interacting with the auction contract. Follow the prompts on the frontend to complete the reveal.
 
-#### 4. Change an account and place a bid
-
-![Place bid](assets/place_bid.png)
-
-#### 5. Once the place bid timing is over, reveal the bid to the auction
-
-![Reveal bid](assets/reveal_bid.png)
-
-#### 6. Once the reveal bid timing is over, distribute the tokens to bidders
-
-![Distribute tokens](assets/distribute_tokens.png)
+#### 6. Distribute Tokens to Bidders Once the Reveal Period Ends
+Once the reveal period ends, the contract will allow token distribution to successful bidders based on their bid amounts and the auction rules.

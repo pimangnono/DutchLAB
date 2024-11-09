@@ -1,9 +1,7 @@
-## dutch-lab-backend
-
-- Hardhat tutorial (https://hardhat.org/tutorial)
+## Dutch Lab Setup Guide
 
 ```bash
-npm install --force # some legacy deps
+npm install --force 
 npm run test
 
 # deploy locally

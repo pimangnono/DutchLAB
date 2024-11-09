@@ -5,21 +5,45 @@ import "hardhat/console.sol";
 
 interface IERC20 {
     function totalSupply() external view returns (uint256);
+
     function balanceOf(address account) external view returns (uint256);
-    function transfer(address recipient, uint256 amount) external returns (bool);
-    function allowance(address owner, address spender) external view returns (uint256);
+
+    function transfer(
+        address recipient,
+        uint256 amount
+    ) external returns (bool);
+
+    function allowance(
+        address owner,
+        address spender
+    ) external view returns (uint256);
+
     function approve(address spender, uint256 amount) external returns (bool);
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) external returns (bool);
+
     function burn(address account, uint256 amount) external;
 }
 
 interface ISubmarine {
     function timestamp() external view returns (uint);
+
     function currentPrice() external view returns (uint);
+
     function getOwner() external view returns (address);
+
     function getBalance() external view returns (uint);
+
     function sendToOwner(uint amount) external payable;
-    function sendToAccount(address payable account, uint amount) external payable;
+
+    function sendToAccount(
+        address payable account,
+        uint amount
+    ) external payable;
 }
 
 function min(uint256 a, uint256 b) pure returns (uint256) {
@@ -58,14 +82,24 @@ contract DutchAuction {
     address[] private submarineList;
     mapping(address => bool) private seenBidders;
 
-    event AuctionCreated(address indexed _seller, address indexed _token, uint _qty, uint startPrice, uint discountRate);
+    event AuctionCreated(
+        address indexed _seller,
+        address indexed _token,
+        uint _qty,
+        uint startPrice,
+        uint discountRate
+    );
     event StartOfAuction();
     event DepositTokens(address indexed _from, uint indexed _qty);
     event LogBid(address indexed _from, uint indexed _price);
     event EndCommitStage();
     event EndRevealStage();
     event EndDistributingStage();
-    event SuccessfulBid(address indexed _bidder, uint _qtyAllocated, uint refund);
+    event SuccessfulBid(
+        address indexed _bidder,
+        uint _qtyAllocated,
+        uint refund
+    );
 
     modifier onlyNotSeller() {
         require(msg.sender != seller, "The seller cannot perform this action");
@@ -73,12 +107,18 @@ contract DutchAuction {
     }
 
     modifier onlySeller() {
-        require(msg.sender == seller, "Only the seller can perform this action");
+        require(
+            msg.sender == seller,
+            "Only the seller can perform this action"
+        );
         _;
     }
 
     modifier onlyNotStarted() {
-        require(status == Status.NotStarted, "This auction has already started");
+        require(
+            status == Status.NotStarted,
+            "This auction has already started"
+        );
         _;
     }
 
@@ -88,12 +128,18 @@ contract DutchAuction {
     }
 
     modifier onlyRevealing() {
-        require(status == Status.Revealing, "This auction is not in revealing stage");
+        require(
+            status == Status.Revealing,
+            "This auction is not in revealing stage"
+        );
         _;
     }
 
     modifier onlyDistributing() {
-        require(status == Status.Distributing, "This auction is not in distributing stage");
+        require(
+            status == Status.Distributing,
+            "This auction is not in distributing stage"
+        );
         _;
     }
 
@@ -132,7 +178,13 @@ contract DutchAuction {
 
         tokenNetWorthPool = (startingPrice * tokenQty) / 10 ** 18;
 
-        emit AuctionCreated(seller, _token, tokenQty, startingPrice, discountRate);
+        emit AuctionCreated(
+            seller,
+            _token,
+            tokenQty,
+            startingPrice,
+            discountRate
+        );
     }
 
     function startAuction() external onlySeller onlyNotStarted {
@@ -149,7 +201,10 @@ contract DutchAuction {
     }
 
     function injectTokens() internal onlySeller onlyNotStarted {
-        require(token.allowance(msg.sender, address(this)) >= tokenQty, "Not enough allowance for token transfer");
+        require(
+            token.allowance(msg.sender, address(this)) >= tokenQty,
+            "Not enough allowance for token transfer"
+        );
         token.transferFrom(msg.sender, address(this), tokenQty);
         emit DepositTokens(msg.sender, tokenQty);
     }
@@ -163,7 +218,9 @@ contract DutchAuction {
         }
         uint timeElapsed = time_now - startAt;
         uint discount = discountRate * timeElapsed;
-        uint currentPrice = startingPrice > discount ? startingPrice - discount : 0;
+        uint currentPrice = startingPrice > discount
+            ? startingPrice - discount
+            : 0;
 
         uint reservePrice = getReservePrice();
         return currentPrice > reservePrice ? currentPrice : reservePrice;
@@ -173,8 +230,13 @@ contract DutchAuction {
         return startingPrice - AUCTION_DURATION * discountRate;
     }
 
-    function distributeTokensBatch(uint batchSize) public onlyDistributing nonReentrant {
-        uint batchEnd = min(submarineList.length, lastDistributedIndex + batchSize);
+    function distributeTokensBatch(
+        uint batchSize
+    ) public onlyDistributing nonReentrant {
+        uint batchEnd = min(
+            submarineList.length,
+            lastDistributedIndex + batchSize
+        );
         for (uint i = lastDistributedIndex; i < batchEnd; i++) {
             ISubmarine submarine = ISubmarine(submarineList[i]);
             address bidder = submarine.getOwner();
@@ -183,7 +245,8 @@ contract DutchAuction {
             }
             seenBidders[bidder] = true;
             uint submarineBalance = submarine.getBalance();
-            uint currentTokenNetWorth = (submarine.currentPrice() * tokenQty) / 10 ** 18;
+            uint currentTokenNetWorth = (submarine.currentPrice() * tokenQty) /
+                10 ** 18;
             currentBidNetWorthPool += submarineBalance;
             uint finalPrice = submarine.currentPrice();
 

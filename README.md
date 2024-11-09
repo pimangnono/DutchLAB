@@ -7,7 +7,7 @@
     - [Installation](#installation)
   - [Instructions](#instructions)
 
-## Features
+## Features/Key Functions
 
 **FrontEnd**
 - ReactJS

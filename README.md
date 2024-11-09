@@ -2,7 +2,7 @@
 
 ## Overview 
   - [Overview](#overview)
-  - [Features/Key Functions](#features)
+  - [Features/Key Functions](#features/keyfeatures)
   - [Setup Guide](#setup-guide)
     - [Installation](#installation)
   - [Instructions](#instructions)

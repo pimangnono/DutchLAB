@@ -35,6 +35,7 @@ contract DutchAuction is ReentrancyGuard {
     mapping(address => uint256) public tokensPurchasedByBuyer; // Track tokens purchased by each buyer
     address[] public buyers; // List of buyers to distribute tokens
 
+<<<<<<< HEAD
     // Events to broadcast key actions during the auction
     event TokenPurchased(address buyer, uint256 amount, uint256 price);
     event AuctionEnded(uint256 tokensUnsold);
@@ -42,6 +43,129 @@ contract DutchAuction is ReentrancyGuard {
     event TokensDistributed();
 
     // Constructor to initialize auction parameters
+=======
+    function getOwner() external view returns (address);
+
+    function getBalance() external view returns (uint);
+
+    function sendToOwner(uint amount) external payable;
+
+    function sendToAccount(
+        address payable account,
+        uint amount
+    ) external payable;
+}
+
+function min(uint256 a, uint256 b) pure returns (uint256) {
+    return a <= b ? a : b;
+}
+
+contract DutchAuction {
+    uint public constant AUCTION_DURATION = 20 minutes;
+    uint public constant REVEAL_DURATION = 10 minutes;
+
+    IERC20 public immutable token;
+    uint public immutable tokenQty;
+    uint public immutable tokenId;
+
+    address payable public immutable seller;
+    uint public immutable startingPrice;
+    uint public immutable discountRate;
+    uint public startAt = 0;
+    uint public revealAt = 0;
+    uint public endAt = 0;
+    bool distributed = false;
+    bool private locked = false; // Prevent re-entrancy
+    uint private lastDistributedIndex = 0; // For batch processing
+    enum Status {
+        NotStarted,
+        Active,
+        Revealing,
+        Distributing,
+        Ended
+    }
+
+    Status private status = Status.NotStarted;
+
+    uint private tokenNetWorthPool;
+    uint private currentBidNetWorthPool;
+    address[] private submarineList;
+    mapping(address => bool) private seenBidders;
+
+    event AuctionCreated(
+        address indexed _seller,
+        address indexed _token,
+        uint _qty,
+        uint startPrice,
+        uint discountRate
+    );
+    event StartOfAuction();
+    event DepositTokens(address indexed _from, uint indexed _qty);
+    event LogBid(address indexed _from, uint indexed _price);
+    event EndCommitStage();
+    event EndRevealStage();
+    event EndDistributingStage();
+    event SuccessfulBid(
+        address indexed _bidder,
+        uint _qtyAllocated,
+        uint refund
+    );
+
+    modifier onlyNotSeller() {
+        require(msg.sender != seller, "The seller cannot perform this action");
+        _;
+    }
+
+    modifier onlySeller() {
+        require(
+            msg.sender == seller,
+            "Only the seller can perform this action"
+        );
+        _;
+    }
+
+    modifier onlyNotStarted() {
+        require(
+            status == Status.NotStarted,
+            "This auction has already started"
+        );
+        _;
+    }
+
+    modifier onlyActive() {
+        require(status == Status.Active, "This auction is no longer active");
+        _;
+    }
+
+    modifier onlyRevealing() {
+        require(
+            status == Status.Revealing,
+            "This auction is not in revealing stage"
+        );
+        _;
+    }
+
+    modifier onlyDistributing() {
+        require(
+            status == Status.Distributing,
+            "This auction is not in distributing stage"
+        );
+        _;
+    }
+
+    modifier onlyEnded() {
+        require(status == Status.Ended, "This auction is not ended");
+        _;
+    }
+
+    modifier nonReentrant() {
+        require(!locked, "Re-entrant call detected");
+        locked = true;
+        _;
+        locked = false;
+    }
+
+>>>>>>> frontend_logic
     constructor(
         address _owner,
         address _tokenAddress,
@@ -89,6 +213,7 @@ contract DutchAuction is ReentrancyGuard {
         emit PriceDecrementRateUpdated(newPriceDecrementRate);
     }
 
+<<<<<<< HEAD
     // Function to get the current price of the token
     function getCurrentPrice() public view returns (uint256) {
         uint256 elapsed = block.timestamp - startTime;
@@ -156,12 +281,109 @@ contract DutchAuction is ReentrancyGuard {
             uint256 amount = tokensPurchasedByBuyer[buyer];
             if (amount > 0) {
                 token.transfer(buyer, amount); // Transfer tokens to each buyer
+=======
+    function injectTokens() internal onlySeller onlyNotStarted {
+        require(
+            token.allowance(msg.sender, address(this)) >= tokenQty,
+            "Not enough allowance for token transfer"
+        );
+        token.transferFrom(msg.sender, address(this), tokenQty);
+        emit DepositTokens(msg.sender, tokenQty);
+    }
+
+    function getPrice(uint time_now) public view returns (uint) {
+        require(time_now >= startAt, "Invalid time input");
+
+        if (status == Status.NotStarted) return startingPrice;
+        if (status != Status.Active) {
+            return getReservePrice();
+        }
+        uint timeElapsed = time_now - startAt;
+        //automatically checked by Solidity for overflow
+        uint discount = discountRate * timeElapsed;
+        uint currentPrice = startingPrice > discount
+            ? startingPrice - discount
+            : 0;
+
+        uint reservePrice = getReservePrice();
+        return currentPrice > reservePrice ? currentPrice : reservePrice;
+    }
+
+    function getReservePrice() public view returns (uint) {
+        return startingPrice - AUCTION_DURATION * discountRate;
+    }
+
+    function distributeTokensBatch(
+        uint batchSize
+    ) public onlyDistributing nonReentrant {
+        uint batchEnd = min(
+            submarineList.length,
+            lastDistributedIndex + batchSize
+        );
+        for (uint i = lastDistributedIndex; i < batchEnd; i++) {
+            ISubmarine submarine = ISubmarine(submarineList[i]);
+            address bidder = submarine.getOwner();
+            if (seenBidders[bidder]) {
+                continue;
+            }
+            seenBidders[bidder] = true;
+            uint submarineBalance = submarine.getBalance();
+            uint currentTokenNetWorth = (submarine.currentPrice() * tokenQty) /
+                10 ** 18;
+            currentBidNetWorthPool += submarineBalance;
+            uint finalPrice = submarine.currentPrice();
+
+            if (currentBidNetWorthPool >= currentTokenNetWorth) {
+                uint refund = currentBidNetWorthPool - currentTokenNetWorth;
+                try submarine.sendToOwner(refund) {} catch {
+                    console.log("Failed to refund to submarine owner");
+                }
+                currentBidNetWorthPool = currentTokenNetWorth;
+            }
+
+            uint qty = (submarineBalance * 10 ** 18) / finalPrice;
+            qty = min(qty, tokenQty - lastDistributedIndex);
+            token.transfer(submarine.getOwner(), qty);
+            submarine.sendToAccount(seller, (qty * finalPrice) / 10 ** 18);
+            lastDistributedIndex += qty;
+        }
+        if (lastDistributedIndex == tokenQty) {
+            endDistributingStage();
+        }
+    }
+
+    function endRevealStage() internal onlyRevealing {
+        status = Status.Distributing;
+        emit EndRevealStage();
+    }
+
+    function endDistributingStage() internal onlyDistributing {
+        distributed = true;
+        status = Status.Ended;
+        emit EndDistributingStage();
+    }
+
+    function auctionStatusPred(uint time_now) public view returns (Status) {
+        Status predStatus;
+        if (startAt == 0) {
+            predStatus = Status.NotStarted;
+        } else if (time_now >= startAt && time_now < revealAt) {
+            predStatus = Status.Active;
+        } else if (time_now >= revealAt && time_now < endAt) {
+            predStatus = Status.Revealing;
+        } else if (time_now >= endAt) {
+            if (distributed) {
+                predStatus = Status.Ended;
+            } else {
+                predStatus = Status.Distributing;
+>>>>>>> frontend_logic
             }
         }
 
         distributed = true; // Mark tokens as distributed
         emit TokensDistributed();
     }
+<<<<<<< HEAD
 
     // Function to allow the owner to withdraw collected Ether
     function withdraw() public {
@@ -173,4 +395,6 @@ contract DutchAuction is ReentrancyGuard {
         );
         owner.transfer(address(this).balance);
     }
+=======
+>>>>>>> frontend_logic
 }

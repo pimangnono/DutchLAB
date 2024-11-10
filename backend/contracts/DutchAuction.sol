@@ -218,7 +218,7 @@ contract DutchAuction {
         }
         uint timeElapsed = time_now - startAt;
         //automatically checked by Solidity for overflow
-        uint discount = discountRate * timeElapsed; 
+        uint discount = discountRate * timeElapsed;
         uint currentPrice = startingPrice > discount
             ? startingPrice - discount
             : 0;
